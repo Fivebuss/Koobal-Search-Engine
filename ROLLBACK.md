@@ -4,6 +4,59 @@
 
 **Last updated:** 2026-07-08
 
+---
+
+## ✅ CURRENT VERIFIED SAFE BASELINE — v0.8.4.0
+
+**User-confirmed working in-game on 2026-07-08** (ModTest install). This is the
+designated safe/rollback version. It is now preserved by **three independent, restorable
+artifacts** — no longer prose-only:
+
+| # | Artifact | Location | Restores by |
+|---|----------|----------|-------------|
+| 1 | **Git annotated tag `v0.8.4.0`** | repo at `Source/PartSearchSuggest/.git` (tag msg: "Verified safe core-only re-baseline") | `git checkout v0.8.4.0` + rebuild |
+| 2 | **In-repo ReleaseArchive zip** | `Source/PartSearchSuggest/ReleaseArchive/KoobalSearchEngine_v0.8.4.0_CORE_STABLE.zip` | unzip into KSP `GameData/` |
+| 3 | **Desktop stable zip** | `C:\Users\timbr\Desktop\KoobalSearchEngine_v0.8.4.0_CORE_STABLE.zip` | unzip into KSP `GameData/` |
+
+Both zips are byte-identical (447,245 bytes) CKAN-style payloads containing
+`GameData/KoobalSearchEngine/`: the `0.8.4.0` DLL, `KoobalSearchEngine.version`, `README.txt`,
+`PluginData/BrandingSettings.cfg`, and `Textures/*.png`.
+
+**Feature scope (core-only):** metadata search (parts, categorizer filters/categories,
+manufacturers, tags, authors, mod names/suites) + predictive dropdown + history/clear +
+branding wordmark/tagline + `BrandingSettings` toggle + **read-only category display icons**.
+**Deliberately NOT included:** subassembly search, custom-category search, and ALL stock-UI /
+category / subassembly / refresh / delete / displayType Harmony patching. Stock parts list,
+filter buttons, category tabs, subassembly tab, and delete are 100% native.
+
+### How to restore v0.8.4.0
+
+**Option A — from a zip (fastest, no build):**
+1. Close KSP.
+2. Unzip either zip (artifact #2 or #3) so its `GameData\KoobalSearchEngine\` merges into
+   your target install's `GameData\` (e.g.
+   `F:\SteamLibrary\steamapps\common\Kerbal Space Program\GameData\`), overwriting.
+3. Launch KSP → VAB and confirm `[Koobal]` bootstrap in `KSP.log`.
+
+**Option B — from git (rebuild from source):**
+```powershell
+cd "F:\SteamLibrary\steamapps\common\Kerbal Space Program\Source\PartSearchSuggest"
+git checkout v0.8.4.0
+# csproj OutputPath writes to the MAIN install by default. To build without touching an
+# install, redirect: dotnet build -c Release -o "$env:TEMP\kse_v0840"
+dotnet build PartSearchSuggest.csproj -c Release
+```
+Verify the built DLL reports `0.8.4.0`:
+```powershell
+[System.Reflection.AssemblyName]::GetAssemblyName("<path>\KoobalSearchEngine.dll").Version
+```
+
+> **Going-forward policy:** every future release MUST create both (a) a commit + annotated
+> git tag and (b) a built zip in `ReleaseArchive/`. See `RELEASE_PROCESS.md`. No version may
+> ever be preserved as prose only again.
+
+---
+
 ## Version lineage
 
 | Label | csproj / assembly | KSP `.version` | Status | Notes |
