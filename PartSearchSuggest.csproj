@@ -7,7 +7,7 @@
     <OutputPath>..\..\GameData\KoobalSearchEngine\Plugins\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <Version>0.8.5.1</Version>
+    <Version>0.8.5.2</Version>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <NoWarn>MSB3277</NoWarn>
   </PropertyGroup>
@@ -22,6 +22,8 @@
     <Compile Remove="tools/**" />
     <Compile Remove="obj/**" />
     <Compile Remove="ReleaseArchive/**" />
+    <!-- Post-v1 architecture scaffolding only — do not ship until after v1. See PostV1/README.md -->
+    <Compile Remove="PostV1\**\*.cs" />
     <None Remove="tools/**" />
   </ItemGroup>
 

@@ -53,14 +53,19 @@ namespace PartSearchSuggest
         {
             GameObject labelObject = new GameObject("KoobalWordmark", typeof(RectTransform));
             labelObject.transform.SetParent(parent, false);
-            ConfigureCenteredLabelRect(labelObject.GetComponent<RectTransform>(), WordmarkPreferredHeight);
+            ConfigureIntrinsicCenteredLabelRect(labelObject.GetComponent<RectTransform>());
 
+            // Intrinsic width (TMP preferred) — parent VLG MiddleCenter places the block.
+            // Do not use flexibleWidth/force-expand; that left-drifts when host width races.
             LayoutElement layout = labelObject.AddComponent<LayoutElement>();
             layout.preferredHeight = WordmarkPreferredHeight;
             layout.minHeight = 24f;
-            layout.flexibleWidth = 1f;
+            layout.flexibleWidth = 0f;
             layout.minWidth = 0f;
-            layout.preferredWidth = -1f;
+
+            ContentSizeFitter fitter = labelObject.AddComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            fitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
 
             TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
             ApplyFont(label, font);
@@ -88,14 +93,17 @@ namespace PartSearchSuggest
         {
             GameObject labelObject = new GameObject("KoobalCaption", typeof(RectTransform));
             labelObject.transform.SetParent(parent, false);
-            ConfigureCenteredLabelRect(labelObject.GetComponent<RectTransform>(), preferredHeight);
+            ConfigureIntrinsicCenteredLabelRect(labelObject.GetComponent<RectTransform>());
 
             LayoutElement layout = labelObject.AddComponent<LayoutElement>();
             layout.preferredHeight = preferredHeight;
             layout.minHeight = preferredHeight - 2f;
-            layout.flexibleWidth = 1f;
+            layout.flexibleWidth = 0f;
             layout.minWidth = 0f;
-            layout.preferredWidth = -1f;
+
+            ContentSizeFitter fitter = labelObject.AddComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            fitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
 
             TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
             ApplyFont(label, font);
@@ -112,21 +120,21 @@ namespace PartSearchSuggest
         }
 
         /// <summary>
-        /// Stretch horizontally + center pivot so TMP Center alignment stays centered in the
-        /// footer even before/without a layout pass (avoids left-anchored default drift).
+        /// Center pivot only — width comes from ContentSizeFitter / TMP preferred size.
+        /// Parent BrandingContent VLG (MiddleCenter, no force-expand) centers the block.
         /// </summary>
-        private static void ConfigureCenteredLabelRect(RectTransform rect, float height)
+        private static void ConfigureIntrinsicCenteredLabelRect(RectTransform rect)
         {
             if (rect == null)
             {
                 return;
             }
 
-            rect.anchorMin = new Vector2(0f, 0.5f);
-            rect.anchorMax = new Vector2(1f, 0.5f);
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = Vector2.zero;
-            rect.sizeDelta = new Vector2(0f, height);
+            rect.sizeDelta = Vector2.zero;
         }
 
         private static void ApplyFont(TextMeshProUGUI label, TMP_FontAsset font)

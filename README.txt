@@ -1,4 +1,6 @@
-# Koobal Search Engine — v0.8.5.1-beta
+# Koobal Search Engine — v0.8.5.2
+
+Mission: organize the user's parts list and make it quickly and universally accessible and useful. (See docs/MISSION.md.)
 
 Predictive search for the KSP editor (VAB/SPH). Koobal attaches a Google-style
 dropdown of live suggestions to the **native** stock parts search bar — no separate
@@ -45,8 +47,8 @@ search path.
 1. Close KSP.
 2. Copy `GameData/KoobalSearchEngine/` into your KSP `GameData/` (merge/overwrite).
 3. Launch KSP → open the VAB or SPH.
-4. `KSP.log` should contain: `[Koobal] Koobal Search Engine v0.8.5.1 active.`
-   (assembly version `0.8.5.1`; this package is labeled **v0.8.5.1-beta**.)
+4. `KSP.log` should contain: `[Koobal] Koobal Search Engine v0.8.5.2 active.`
+   (assembly version `0.8.5.2`.)
 
 ### Requirements / dependencies
 
@@ -78,6 +80,15 @@ Restart the editor. Beta ships with verbose logging **off** — only a concise s
 banner plus genuine warnings/errors are logged by default.
 
 ## Changelog (recent)
+
+### v0.8.5.2 — branding footer stays centered (test-report line)
+- **Fix:** empty-query Koobal wordmark no longer left-aligns when recent-search history
+  rows are present, or when the dropdown resizes/repositions (taller panel / move-down).
+- **Cause:** nested footer LayoutGroups + stretch anchors fought TMP preferred width, so
+  the content host could collapse to text width and sit on the left after history/layout.
+- **Change:** stretch-fill branding host (no LayoutGroup on the footer); intrinsic-width
+  wordmark/captions with ContentSizeFitter; parent VLG MiddleCenter without force-expand.
+  Re-assert host stretch after panel width/height changes.
 
 ### v0.8.5.1-beta — suggestion quality rebalance (same assembly)
 - **Restore:** rich mix again — function/category/manufacturer/diameter, mod/author/suite,
