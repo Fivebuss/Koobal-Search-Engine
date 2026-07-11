@@ -54,6 +54,19 @@ Copy into your KSP GameData tree:
 
 Do NOT ship History.cfg, branding PNGs, or .pdb in the player package.
 
+Handoff zip drop location (player package only):
+
+  C:\Users\timbr\Desktop\KSE\
+
+  e.g. KoobalSearchEngine_v0.8.6.0.zip
+
+Player zip MUST include LICENSE (and the GameData payload). Do NOT create local
+`*_SOURCE.zip` / `-with-source` courtesy archives — discontinued to save space.
+Working source lives in this folder; update the GitHub git tree only when asked.
+Also keep a player copy under Source\PartSearchSuggest\ReleaseArchive\ per RELEASE_PROCESS.md.
+Do not leave full-Koobal zips on the Desktop root (KoobalNativeSearch* may stay on Desktop
+until a separate standalone folder is created).
+
 See README.txt for the full player install layout.
 
 Runtime dependencies (not bundled — document per forum rules)
