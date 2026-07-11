@@ -2,7 +2,7 @@
 
 **Document version:** 2026-07-07  
 **Mod:** Koobal Search Engine (`KoobalSearchEngine`) — *a Kerbalized play on Google search ("Koobal" = Kerbal + Google; same spirit as the prior "Koogle" name). Formerly Part Search Suggest.*  
-**Author:** Tim / Composer  
+**Author:** timbrwolf1121  
 **Target KSP:** 1.12.0 – 1.12.99 (pinned to 1.12.5 in `.version`)  
 **Rollout intent:** No external sharing until **v0.9.0+**; **v1.0** = fully publishable (CKAN + public release)
 
@@ -420,7 +420,7 @@ Prioritized by **conflict likelihood** with PartSearchSuggest's hook surface (`P
     "identifier": "PartSearchSuggest",
     "name": "Part Search Suggest",
     "abstract": "Predictive dropdown on the native VAB/SPH parts search bar with metadata-aware suggestions (authors, mods, categorizer filters).",
-    "author": "Tim / Composer",
+    "author": "timbrwolf1121",
     "license": "MIT",
     "version": "1.0.0",
     "ksp_version_min": "1.12.0",

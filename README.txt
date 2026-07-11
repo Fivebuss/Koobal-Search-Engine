@@ -1,4 +1,4 @@
-# Koobal Search Engine — v0.8.5.2
+# Koobal Search Engine — v0.8.5.1
 
 Predictive search for the KSP editor (VAB/SPH). Koobal attaches a Google-style
 dropdown of live suggestions to the **native** stock parts search bar — no separate
@@ -45,7 +45,7 @@ search path.
 1. Close KSP.
 2. Copy `GameData/KoobalSearchEngine/` into your KSP `GameData/` (merge/overwrite).
 3. Launch KSP → open the VAB or SPH.
-4. `KSP.log` should contain: `[Koobal] Koobal Search Engine v0.8.5.2 active.`
+4. `KSP.log` should contain: `[Koobal] Koobal Search Engine v0.8.5.1 active.`
 
 ### Requirements / dependencies
 
@@ -78,16 +78,7 @@ banner plus genuine warnings/errors are logged by default.
 
 ## Changelog (recent)
 
-### v0.8.5.2 — hangar-free index load (QoL)
-- **Audit fix:** editor (VAB/SPH) no longer starts index builds. `GameLoadBootstrap` is
-  the sole builder (save-load / first post-save scene). `EditorSearchHook` only waits
-  for readiness and hooks the search UI.
-- Removed hangar fallback `BuildIfNeeded` and wait-path build kicks; clears stale
-  build locks after scene-host destruction so interrupted KSC builds can finish on
-  the next save-bearing load without hangar work.
-- Preserves v0.8.5.1 SearchStart/routine-null fix.
-
-### v0.8.5.1 — ApplySuggestion SearchStart NRE fix
+### v0.8.5.1 — SearchStart NRE fix + hangar-free index load
 - **Fix:** after applying a suggestion, typing in the search field no longer throws
   `NullReferenceException: routine is null` from stock `SearchStart`.
 - **Cause:** the race guard Harmony-skipped `SearchRoutine` (IEnumerator), which made
@@ -96,6 +87,12 @@ banner plus genuine warnings/errors are logged by default.
 - **Change:** stop skipping `SearchRoutine`; block void `SearchStart` only while a
   Koobal apply is in progress; clear the custom-filter guard when stock search starts
   or on focus/typing; recover search flags if ApplySuggestion fails.
+- **QoL (also under this label):** editor (VAB/SPH) no longer starts index builds.
+  `GameLoadBootstrap` is the sole builder (save-load / first post-save scene).
+  `EditorSearchHook` only waits for readiness and hooks the search UI. Removed hangar
+  fallback `BuildIfNeeded` and wait-path build kicks; clears stale build locks after
+  scene-host destruction. (Briefly labeled v0.8.5.2 during ModTest; folded back into
+  v0.8.5.1 until the next packaged beta.)
 
 ### v0.8.5.0-beta — optimization + sanitary beta pass
 - **Performance:** removed a redundant per-keystroke field re-scan in part matching;
