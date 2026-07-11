@@ -53,11 +53,14 @@ namespace PartSearchSuggest
         {
             GameObject labelObject = new GameObject("KoobalWordmark", typeof(RectTransform));
             labelObject.transform.SetParent(parent, false);
+            ConfigureCenteredLabelRect(labelObject.GetComponent<RectTransform>(), WordmarkPreferredHeight);
 
             LayoutElement layout = labelObject.AddComponent<LayoutElement>();
             layout.preferredHeight = WordmarkPreferredHeight;
             layout.minHeight = 24f;
             layout.flexibleWidth = 1f;
+            layout.minWidth = 0f;
+            layout.preferredWidth = -1f;
 
             TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
             ApplyFont(label, font);
@@ -85,11 +88,14 @@ namespace PartSearchSuggest
         {
             GameObject labelObject = new GameObject("KoobalCaption", typeof(RectTransform));
             labelObject.transform.SetParent(parent, false);
+            ConfigureCenteredLabelRect(labelObject.GetComponent<RectTransform>(), preferredHeight);
 
             LayoutElement layout = labelObject.AddComponent<LayoutElement>();
             layout.preferredHeight = preferredHeight;
             layout.minHeight = preferredHeight - 2f;
             layout.flexibleWidth = 1f;
+            layout.minWidth = 0f;
+            layout.preferredWidth = -1f;
 
             TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
             ApplyFont(label, font);
@@ -103,6 +109,24 @@ namespace PartSearchSuggest
             label.overflowMode = TextOverflowModes.Overflow;
             label.margin = new Vector4(0f, topMargin, 0f, 0f);
             label.raycastTarget = false;
+        }
+
+        /// <summary>
+        /// Stretch horizontally + center pivot so TMP Center alignment stays centered in the
+        /// footer even before/without a layout pass (avoids left-anchored default drift).
+        /// </summary>
+        private static void ConfigureCenteredLabelRect(RectTransform rect, float height)
+        {
+            if (rect == null)
+            {
+                return;
+            }
+
+            rect.anchorMin = new Vector2(0f, 0.5f);
+            rect.anchorMax = new Vector2(1f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(0f, height);
         }
 
         private static void ApplyFont(TextMeshProUGUI label, TMP_FontAsset font)

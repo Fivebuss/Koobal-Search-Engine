@@ -93,6 +93,10 @@ banner plus genuine warnings/errors are logged by default.
   fallback `BuildIfNeeded` and wait-path build kicks; clears stale build locks after
   scene-host destruction. (Briefly labeled v0.8.5.2 during ModTest; folded back into
   v0.8.5.1 until the next packaged beta.)
+- **1080p readability:** larger dropdown fonts + brighter contrast; branding captions
+  slightly larger.
+- **Branding footer:** empty-query Koobal wordmark stays horizontally centered at the
+  bottom (no left drift on rebuild / width change).
 
 ### v0.8.5.0-beta — optimization + sanitary beta pass
 - **Performance:** removed a redundant per-keystroke field re-scan in part matching;

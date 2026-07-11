@@ -389,20 +389,39 @@ namespace PartSearchSuggest
 
             _brandingFooterLayout = footer.AddComponent<LayoutElement>();
             _brandingFooterLayout.flexibleHeight = 0f;
+            _brandingFooterLayout.flexibleWidth = 1f;
 
             Image footerBackground = footer.AddComponent<Image>();
             footerBackground.sprite = GetWhiteSprite();
             footerBackground.color = new Color(1f, 1f, 1f, 0f);
             footerBackground.raycastTarget = false;
 
+            // Footer VLG keeps the wordmark host full-width and vertically centered
+            // even when the panel width changes (category icon rail) or children rebuild.
+            VerticalLayoutGroup footerLayout = footer.AddComponent<VerticalLayoutGroup>();
+            footerLayout.childAlignment = TextAnchor.MiddleCenter;
+            footerLayout.childControlWidth = true;
+            footerLayout.childControlHeight = true;
+            footerLayout.childForceExpandWidth = true;
+            footerLayout.childForceExpandHeight = true;
+            footerLayout.spacing = 0f;
+            footerLayout.padding = new RectOffset(4, 4, 2, 2);
+
             GameObject contentHost = new GameObject("BrandingContent", typeof(RectTransform));
             contentHost.transform.SetParent(footer.transform, false);
             _brandingContentHost = contentHost;
 
+            LayoutElement hostLayout = contentHost.AddComponent<LayoutElement>();
+            hostLayout.flexibleWidth = 1f;
+            hostLayout.flexibleHeight = 1f;
+            hostLayout.minHeight = 0f;
+
             RectTransform hostRect = contentHost.GetComponent<RectTransform>();
-            StretchFull(hostRect);
-            hostRect.offsetMin = new Vector2(4f, 2f);
-            hostRect.offsetMax = new Vector2(-4f, -2f);
+            hostRect.anchorMin = new Vector2(0f, 0f);
+            hostRect.anchorMax = new Vector2(1f, 1f);
+            hostRect.pivot = new Vector2(0.5f, 0.5f);
+            hostRect.offsetMin = Vector2.zero;
+            hostRect.offsetMax = Vector2.zero;
 
             VerticalLayoutGroup layout = contentHost.AddComponent<VerticalLayoutGroup>();
             layout.childAlignment = TextAnchor.MiddleCenter;
@@ -427,9 +446,11 @@ namespace PartSearchSuggest
             _brandingFooterLayout.minHeight = footerHeight;
             _brandingFooterLayout.preferredHeight = footerHeight;
 
+            // DestroyImmediate so deferred Destroy leftovers cannot leave a left-anchored
+            // sibling in the layout pass that runs later in Show().
             for (int i = _brandingContentHost.transform.childCount - 1; i >= 0; i--)
             {
-                Destroy(_brandingContentHost.transform.GetChild(i).gameObject);
+                DestroyImmediate(_brandingContentHost.transform.GetChild(i).gameObject);
             }
 
             TMP_FontAsset font = _headerLabel != null ? _headerLabel.font : null;
@@ -440,6 +461,34 @@ namespace PartSearchSuggest
             else
             {
                 KoobalWordmarkBuilder.BuildWordmarkOnly(_brandingContentHost.transform, font);
+            }
+
+            RectTransform hostRect = _brandingContentHost.transform as RectTransform;
+            if (hostRect != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(hostRect);
+            }
+        }
+
+        private void RebuildBrandingFooterLayout()
+        {
+            if (_brandingFooter == null || !_brandingFooter.activeSelf)
+            {
+                return;
+            }
+
+            RectTransform footerRect = _brandingFooter.transform as RectTransform;
+            if (footerRect != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(footerRect);
+            }
+
+            RectTransform hostRect = _brandingContentHost != null
+                ? _brandingContentHost.transform as RectTransform
+                : null;
+            if (hostRect != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(hostRect);
             }
         }
 
@@ -1277,6 +1326,11 @@ namespace PartSearchSuggest
 
             }
 
+            if (showBrandingFooter)
+            {
+                RebuildBrandingFooterLayout();
+            }
+
 
 
             Canvas.ForceUpdateCanvases();
@@ -1297,6 +1351,12 @@ namespace PartSearchSuggest
 
             PositionPanelBelowSearchField();
 
+            // Width may change with category rail / search-field measure — re-center footer.
+            if (showBrandingFooter)
+            {
+                RebuildBrandingFooterLayout();
+            }
+
 
 
             _rootRect.gameObject.SetActive(true);
@@ -1304,6 +1364,11 @@ namespace PartSearchSuggest
             _rootRect.SetAsLastSibling();
 
             _panelRect.transform.SetAsLastSibling();
+
+            if (showBrandingFooter)
+            {
+                RebuildBrandingFooterLayout();
+            }
 
 
 
