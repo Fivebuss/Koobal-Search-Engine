@@ -1,4 +1,4 @@
-# Koobal Search Engine — v0.8.5.0-beta
+# Koobal Search Engine — v0.8.5.1
 
 Predictive search for the KSP editor (VAB/SPH). Koobal attaches a Google-style
 dropdown of live suggestions to the **native** stock parts search bar — no separate
@@ -45,7 +45,7 @@ search path.
 1. Close KSP.
 2. Copy `GameData/KoobalSearchEngine/` into your KSP `GameData/` (merge/overwrite).
 3. Launch KSP → open the VAB or SPH.
-4. `KSP.log` should contain: `[Koobal] Koobal Search Engine v0.8.5.0 active.`
+4. `KSP.log` should contain: `[Koobal] Koobal Search Engine v0.8.5.1 active.`
 
 ### Requirements / dependencies
 
@@ -77,6 +77,16 @@ Restart the editor. Beta ships with verbose logging **off** — only a concise s
 banner plus genuine warnings/errors are logged by default.
 
 ## Changelog (recent)
+
+### v0.8.5.1 — ApplySuggestion SearchStart NRE fix
+- **Fix:** after applying a suggestion, typing in the search field no longer throws
+  `NullReferenceException: routine is null` from stock `SearchStart`.
+- **Cause:** the race guard Harmony-skipped `SearchRoutine` (IEnumerator), which made
+  it return null; stock then called `StartCoroutine(null)`. Blur/refocus appeared to
+  "fix" it by resetting search state.
+- **Change:** stop skipping `SearchRoutine`; block void `SearchStart` only while a
+  Koobal apply is in progress; clear the custom-filter guard when stock search starts
+  or on focus/typing; recover search flags if ApplySuggestion fails.
 
 ### v0.8.5.0-beta — optimization + sanitary beta pass
 - **Performance:** removed a redundant per-keystroke field re-scan in part matching;

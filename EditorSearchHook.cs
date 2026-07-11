@@ -978,6 +978,7 @@ namespace PartSearchSuggest
             catch (Exception ex)
             {
                 EditorBootstrap.LogWarning("ApplySuggestion failed — " + ex.Message);
+                StockSearchHelper.RecoverAfterFailedApply();
             }
             finally
             {

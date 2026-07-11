@@ -5,9 +5,14 @@ namespace PartSearchSuggest
 {
     /// <summary>
     /// Minimal race guard (v0.6.7-era): while Koobal is applying a suggestion filter (EnterSuppress)
-    /// or a Koobal custom filter is active, block stock's own async SearchRoutine / SearchFilterResult
+    /// or a Koobal custom filter is active, block stock's own async SearchFilterResult
     /// from overwriting the applied result. Koobal does NOT block stock typing, refresh, tab, or
     /// subassembly flows — those run 100% natively.
+    ///
+    /// IMPORTANT: never Harmony-skip <see cref="BasePartCategorizer"/> SearchRoutine.
+    /// Prefix-skipping an IEnumerator method returns null; stock SearchStart then calls
+    /// StartCoroutine(null) and throws ("routine is null"). Block SearchStart (void) instead
+    /// while suppressed, and clear the custom-filter guard when stock SearchStart runs.
     /// </summary>
     internal static class StockSearchGuard
     {
@@ -101,32 +106,30 @@ namespace PartSearchSuggest
             }
         }
 
-        private static bool ShouldBlockStockSearchRoutine()
+        /// <summary>
+        /// Skip stock SearchStart only while Koobal is mid-apply. Safe for a void method.
+        /// When stock SearchStart runs after an apply, release the custom-filter race guard
+        /// so SearchRoutine can return a real IEnumerator (typing works without blur/refocus).
+        /// </summary>
+        [HarmonyPatch(typeof(BasePartCategorizer), "SearchStart")]
+        private static class BaseSearchStartPatch
         {
-            if (IsSuppressed || HasActiveCustomFilter)
+            private static bool Prefix()
             {
-                EditorBootstrap.Log("Blocked stock SearchRoutine while Koobal filter apply/active.");
+                if (IsSuppressed)
+                {
+                    EditorBootstrap.Log("Blocked stock SearchStart while Koobal filter apply.");
+                    return false;
+                }
+
+                if (HasActiveCustomFilter)
+                {
+                    ClearActiveCustomFilter();
+                    EditorBootstrap.Log(
+                        "Cleared active custom filter so stock SearchStart/SearchRoutine can run.");
+                }
+
                 return true;
-            }
-
-            return false;
-        }
-
-        [HarmonyPatch(typeof(BasePartCategorizer), "SearchRoutine")]
-        private static class BaseSearchRoutinePatch
-        {
-            private static bool Prefix()
-            {
-                return !ShouldBlockStockSearchRoutine();
-            }
-        }
-
-        [HarmonyPatch(typeof(PartCategorizer), "SearchRoutine")]
-        private static class PartCategorizerSearchRoutinePatch
-        {
-            private static bool Prefix()
-            {
-                return !ShouldBlockStockSearchRoutine();
             }
         }
 
