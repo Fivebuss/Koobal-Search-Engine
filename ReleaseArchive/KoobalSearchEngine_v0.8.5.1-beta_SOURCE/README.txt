@@ -79,6 +79,16 @@ banner plus genuine warnings/errors are logged by default.
 
 ## Changelog (recent)
 
+### v0.8.5.1-beta — suggestion quality rebalance (same assembly)
+- **Restore:** rich mix again — function/category/manufacturer/diameter, mod/author/suite,
+  and part titles (e.g. Spark for `sp`) sit above parts in ranking; parts no longer crowd
+  filters out of the top of the dropdown.
+- **Cap:** tag/module/resource/tech token-style rows limited (3) so generated suggestions
+  cannot fill the whole list; high-value categorizer filters keep a larger budget (8).
+- **Suppress:** stock synonym-tag dictionary junk (`space`, `speed`, `spoil`, `split`, `spot`)
+  via `SuggestionTokenQuality` denylist; FilterResource no longer tokenizes free-form
+  `resourceInfo` prose. Title/name still preferred within part scoring.
+
 ### v0.8.5.1-beta — SearchStart NRE fix + hangar-free index load
 - **Fix:** after applying a suggestion, typing in the search field no longer throws
   `NullReferenceException: routine is null` from stock `SearchStart`.

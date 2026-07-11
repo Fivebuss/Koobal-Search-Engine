@@ -11,11 +11,12 @@ namespace PartSearchSuggest
     {
         internal const int FrameSliceBatchSize = 75;
 
-        // Lower score = stronger match. Metadata ranks above title/name, then description.
-        private const int TagPrefix = 0;
-        private const int TagContains = 1;
-        private const int AutoTagPrefix = 2;
-        private const int AutoTagContains = 3;
+        // Lower score = stronger match.
+        // Title/name first so short prefixes like "sp" surface Spark above synonym-tag noise.
+        private const int TitlePrefix = 0;
+        private const int TitleContains = 1;
+        private const int NamePrefix = 2;
+        private const int NameContains = 3;
         private const int CategoryPrefix = 4;
         private const int CategoryContains = 5;
         private const int ModulePrefix = 6;
@@ -30,15 +31,16 @@ namespace PartSearchSuggest
         private const int ModAuthorContains = 11;
         private const int TechPrefix = 10;
         private const int TechContains = 11;
-        private const int TitlePrefix = 14;
-        private const int TitleContains = 15;
-        private const int NamePrefix = 16;
-        private const int NameContains = 17;
+        private const int TagPrefix = 14;
+        private const int TagContains = 15;
+        private const int AutoTagPrefix = 16;
+        private const int AutoTagContains = 17;
         private const int DescriptionPrefix = 22;
         private const int DescriptionContains = 23;
 
         // Enter-submit uses tighter matching than dropdown suggestions (no description-only hits).
-        internal const int EnterSearchMaxAggregateScore = NameContains;
+        // Allow title/name/metadata/tag fields; description scores sit above this ceiling.
+        internal const int EnterSearchMaxAggregateScore = AutoTagContains;
 
         private readonly List<IndexedPart> _parts = new List<IndexedPart>();
 
@@ -117,6 +119,8 @@ namespace PartSearchSuggest
                     MatchReason = FormatMatchReason(match.BestField),
                     Part = match.Entry.Part,
                     IsHistory = false,
+                    // Always sit below first-class categorizer/metadata rows (RankScore ~0–20).
+                    // Title-first field scores above still prefer Spark over tag-matched parts.
                     RankScore = 100 + match.Score
                 };
 
@@ -401,24 +405,25 @@ namespace PartSearchSuggest
 
             switch (field.Kind)
             {
-                case SearchFieldKind.Tag:
-                case SearchFieldKind.AutoTag:
+                case SearchFieldKind.Title:
+                case SearchFieldKind.Name:
+                    return 0;
                 case SearchFieldKind.Category:
                 case SearchFieldKind.Module:
                 case SearchFieldKind.ModName:
                 case SearchFieldKind.ModFolder:
                 case SearchFieldKind.Manufacturer:
                 case SearchFieldKind.TechRequired:
-                    return 0;
-                case SearchFieldKind.ModAuthor:
                     return 1;
-                case SearchFieldKind.Title:
-                case SearchFieldKind.Name:
+                case SearchFieldKind.ModAuthor:
                     return 2;
-                case SearchFieldKind.Description:
+                case SearchFieldKind.Tag:
+                case SearchFieldKind.AutoTag:
                     return 3;
-                default:
+                case SearchFieldKind.Description:
                     return 4;
+                default:
+                    return 5;
             }
         }
 

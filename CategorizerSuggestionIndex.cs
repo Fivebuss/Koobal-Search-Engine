@@ -654,7 +654,10 @@ namespace PartSearchSuggest
             for (int i = 0; i < tokens.Length; i++)
             {
                 string tag = tokens[i].Trim();
-                if (tag.Length < 3 || IsExcludedPartTag(tag) || !seenOnPart.Add(tag))
+                if (tag.Length < 3
+                    || IsExcludedPartTag(tag)
+                    || !SuggestionTokenQuality.IsSuggestionWorthyTag(tag)
+                    || !seenOnPart.Add(tag))
                 {
                     continue;
                 }
@@ -675,7 +678,18 @@ namespace PartSearchSuggest
 
         private static bool IsExcludedPartTag(string tag)
         {
-            switch (tag.ToLowerInvariant())
+            if (string.IsNullOrWhiteSpace(tag))
+            {
+                return true;
+            }
+
+            string lower = tag.ToLowerInvariant();
+            if (lower.StartsWith("#autoloc", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            switch (lower)
             {
                 case "size0":
                 case "size1":
@@ -731,18 +745,13 @@ namespace PartSearchSuggest
 
         private static void AccumulateResourceCounts(AvailablePart part, Dictionary<string, int> counts)
         {
-            if (part == null)
+            if (part == null || part.resourceInfos == null)
             {
                 return;
             }
 
-            CollectResourceCounts(part.resourceInfo, counts);
-
-            if (part.resourceInfos == null)
-            {
-                return;
-            }
-
+            // Only structured resource name/displayName — never tokenize free-form resourceInfo
+            // prose (that produced dictionary-like junk suggestions from description text).
             for (int i = 0; i < part.resourceInfos.Count; i++)
             {
                 AvailablePart.ResourceInfo resourceInfo = part.resourceInfos[i];
@@ -751,8 +760,8 @@ namespace PartSearchSuggest
                     continue;
                 }
 
-                CollectResourceCounts(resourceInfo.resourceName, counts);
-                CollectResourceCounts(resourceInfo.displayName, counts);
+                CollectStructuredResourceToken(resourceInfo.resourceName, counts);
+                CollectStructuredResourceToken(resourceInfo.displayName, counts);
             }
         }
 
@@ -907,30 +916,32 @@ namespace PartSearchSuggest
             return true;
         }
 
-        private static void CollectResourceCounts(string rawValue, Dictionary<string, int> counts)
+        private static void CollectStructuredResourceToken(string rawValue, Dictionary<string, int> counts)
         {
             if (string.IsNullOrWhiteSpace(rawValue))
             {
                 return;
             }
 
-            string[] tokens = rawValue.Split(new[] { ' ', ',', ';', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-            for (int i = 0; i < tokens.Length; i++)
+            string token = rawValue.Trim().Trim(':');
+            if (token.Length < 2 || !SuggestionTokenQuality.IsSuggestionWorthyResourceToken(token))
             {
-                string token = tokens[i].Trim().Trim(':');
-                if (token.Length < 2)
-                {
-                    continue;
-                }
+                return;
+            }
 
-                if (counts.TryGetValue(token, out int existing))
-                {
-                    counts[token] = existing + 1;
-                }
-                else
-                {
-                    counts[token] = 1;
-                }
+            // Reject multi-word prose accidentally stored as a display name.
+            if (token.IndexOf(' ') >= 0 || token.IndexOf(',') >= 0)
+            {
+                return;
+            }
+
+            if (counts.TryGetValue(token, out int existing))
+            {
+                counts[token] = existing + 1;
+            }
+            else
+            {
+                counts[token] = 1;
             }
         }
 

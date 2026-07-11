@@ -32,8 +32,11 @@ namespace PartSearchSuggest
     internal sealed class EditorSearchHook : MonoBehaviour
     {
         private const int MaxSuggestions = 24;
-        private const int MaxMetadataSuggestions = 6;
-        private const int MaxCategorizerSuggestions = 6;
+        private const int MaxMetadataSuggestions = 8;
+        // Pull a wider categorizer pool, then budget high-value vs token-style rows.
+        private const int MaxCategorizerCandidates = 16;
+        private const int MaxHighValueCategorizerSuggestions = 8;
+        private const int MaxTokenCategorizerSuggestions = 3;
 
         private TMP_InputField _searchField;
         private RectTransform _fieldRect;
@@ -621,7 +624,8 @@ namespace PartSearchSuggest
                     : new List<PartSuggestion>();
 
                 List<PartSuggestion> categorizerSuggestions = _categorizerIndexReady
-                    ? _categorizerIndex.Match(query, MaxCategorizerSuggestions).ToList()
+                    ? BudgetCategorizerSuggestions(
+                        _categorizerIndex.Match(query, MaxCategorizerCandidates).ToList())
                     : new List<PartSuggestion>();
 
                 int firstClassCount = metadataSuggestions.Count
@@ -719,6 +723,61 @@ namespace PartSearchSuggest
             }
 
             ShowSuggestions(query, preferHistory, "retry-" + source);
+        }
+
+        /// <summary>
+        /// Keep function/category/manufacturer/diameter rows freely; cap tag/module/resource/tech
+        /// token-style rows so they cannot fill the dropdown and push parts/filters off-screen.
+        /// </summary>
+        private static List<PartSuggestion> BudgetCategorizerSuggestions(List<PartSuggestion> candidates)
+        {
+            if (candidates == null || candidates.Count == 0)
+            {
+                return new List<PartSuggestion>();
+            }
+
+            var highValue = new List<PartSuggestion>(MaxHighValueCategorizerSuggestions);
+            var tokenStyle = new List<PartSuggestion>(MaxTokenCategorizerSuggestions);
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                PartSuggestion candidate = candidates[i];
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                if (IsHighValueCategorizerKind(candidate.Kind))
+                {
+                    if (highValue.Count < MaxHighValueCategorizerSuggestions)
+                    {
+                        highValue.Add(candidate);
+                    }
+                }
+                else if (tokenStyle.Count < MaxTokenCategorizerSuggestions)
+                {
+                    tokenStyle.Add(candidate);
+                }
+            }
+
+            var budgeted = new List<PartSuggestion>(highValue.Count + tokenStyle.Count);
+            budgeted.AddRange(highValue);
+            budgeted.AddRange(tokenStyle);
+            return budgeted;
+        }
+
+        private static bool IsHighValueCategorizerKind(SuggestionKind kind)
+        {
+            switch (kind)
+            {
+                case SuggestionKind.FilterFunction:
+                case SuggestionKind.FilterCategory:
+                case SuggestionKind.FilterManufacturer:
+                case SuggestionKind.FilterDiameter:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         private static bool IsRedundantPartSuggestion(
