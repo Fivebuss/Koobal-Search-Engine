@@ -12,7 +12,10 @@ namespace PartSearchSuggest
         internal const int FrameSliceBatchSize = 75;
 
         // Lower score = stronger match.
-        // Title/name first so short prefixes like "sp" surface Spark above synonym-tag noise.
+        // Short queries (length ≤ 2): title/name-first so "sp" surfaces Spark above synonym-tag noise.
+        // Longer queries (length ≥ 3): tag-weighted / v0.7-style so tag/metadata hits rank above title.
+        // Shared mid-band (category/module/mod/tech/desc) is identical in both modes; only
+        // Title/Name/Tag/AutoTag swap. Indexed PrefixScore/ContainsScore use the title-first table.
         private const int TitlePrefix = 0;
         private const int TitleContains = 1;
         private const int NamePrefix = 2;
@@ -37,6 +40,19 @@ namespace PartSearchSuggest
         private const int AutoTagContains = 17;
         private const int DescriptionPrefix = 22;
         private const int DescriptionContains = 23;
+
+        // Tag-weighted overrides (v0.7 / v0.8.5.0) — applied at score time when query length ≥ 3.
+        private const int TagWeightedTagPrefix = 0;
+        private const int TagWeightedTagContains = 1;
+        private const int TagWeightedAutoTagPrefix = 2;
+        private const int TagWeightedAutoTagContains = 3;
+        private const int TagWeightedTitlePrefix = 14;
+        private const int TagWeightedTitleContains = 15;
+        private const int TagWeightedNamePrefix = 16;
+        private const int TagWeightedNameContains = 17;
+
+        // Queries at or below this length use title/name-first part scoring (e.g. "sp" → Spark).
+        private const int TitleFirstMaxQueryLength = 2;
 
         // Enter-submit uses tighter matching than dropdown suggestions (no description-only hits).
         // Allow title/name/metadata/tag fields; description scores sit above this ceiling.
@@ -98,14 +114,15 @@ namespace PartSearchSuggest
             }
 
             string[] words = trimmed.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            bool titleFirst = trimmed.Length <= TitleFirstMaxQueryLength;
 
             // ScorePart already returns Score < 0 when any query word matches no field, so a
             // separate WordsMatch pre-filter would just re-scan every field redundantly.
             IEnumerable<ScoredPart> ranked = _parts
-                .Select(entry => ScorePart(entry, words))
+                .Select(entry => ScorePart(entry, words, titleFirst))
                 .Where(match => match.Score >= 0)
                 .OrderBy(match => match.Score)
-                .ThenBy(match => KindPriority(match.BestField))
+                .ThenBy(match => KindPriority(match.BestField, titleFirst))
                 .ThenBy(match => match.Entry.DisplayText, StringComparer.OrdinalIgnoreCase);
 
             int count = 0;
@@ -120,7 +137,6 @@ namespace PartSearchSuggest
                     Part = match.Entry.Part,
                     IsHistory = false,
                     // Always sit below first-class categorizer/metadata rows (RankScore ~0–20).
-                    // Title-first field scores above still prefer Spark over tag-matched parts.
                     RankScore = 100 + match.Score
                 };
 
@@ -150,6 +166,8 @@ namespace PartSearchSuggest
                 yield break;
             }
 
+            bool titleFirst = trimmed.Length <= TitleFirstMaxQueryLength;
+
             foreach (IndexedPart entry in _parts)
             {
                 if (!EditorPartAvailability.IsAvailableInEditor(entry.Part))
@@ -157,7 +175,7 @@ namespace PartSearchSuggest
                     continue;
                 }
 
-                ScoredPart scored = ScorePart(entry, words);
+                ScoredPart scored = ScorePart(entry, words, titleFirst);
                 if (!QualifiesForEnterSearch(scored))
                 {
                     continue;
@@ -312,7 +330,7 @@ namespace PartSearchSuggest
             });
         }
 
-        private static ScoredPart ScorePart(IndexedPart entry, string[] words)
+        private static ScoredPart ScorePart(IndexedPart entry, string[] words, bool titleFirst)
         {
             int aggregateScore = -1;
             SearchField bestField = null;
@@ -326,7 +344,7 @@ namespace PartSearchSuggest
                 for (int i = 0; i < entry.Fields.Count; i++)
                 {
                     SearchField field = entry.Fields[i];
-                    int score = ScoreField(field, word);
+                    int score = ScoreField(field, word, titleFirst);
                     if (score < 0)
                     {
                         continue;
@@ -334,7 +352,8 @@ namespace PartSearchSuggest
 
                     if (wordBestScore < 0
                         || score < wordBestScore
-                        || (score == wordBestScore && KindPriority(field) < KindPriority(wordBestField)))
+                        || (score == wordBestScore
+                            && KindPriority(field, titleFirst) < KindPriority(wordBestField, titleFirst)))
                     {
                         wordBestScore = score;
                         wordBestField = field;
@@ -348,7 +367,8 @@ namespace PartSearchSuggest
 
                 if (aggregateScore < 0
                     || wordBestScore > aggregateScore
-                    || (wordBestScore == aggregateScore && KindPriority(wordBestField) < KindPriority(bestField)))
+                    || (wordBestScore == aggregateScore
+                        && KindPriority(wordBestField, titleFirst) < KindPriority(bestField, titleFirst)))
                 {
                     aggregateScore = wordBestScore;
                     bestField = wordBestField;
@@ -363,12 +383,14 @@ namespace PartSearchSuggest
             };
         }
 
-        private static int ScoreField(SearchField field, string word)
+        private static int ScoreField(SearchField field, string word, bool titleFirst)
         {
             if (field == null || field.Text.Length < 2 || string.IsNullOrEmpty(word))
             {
                 return -1;
             }
+
+            ResolveFieldScores(field, titleFirst, out int prefixScore, out int containsScore);
 
             if (field.StrictPrefixMatch)
             {
@@ -379,51 +401,119 @@ namespace PartSearchSuggest
                 }
 
                 return authorRank == AuthorMatchHelper.FullTokenPrefixRank
-                    ? field.PrefixScore
-                    : field.ContainsScore;
+                    ? prefixScore
+                    : containsScore;
             }
 
             if (field.Text.StartsWith(word, StringComparison.OrdinalIgnoreCase))
             {
-                return field.PrefixScore;
+                return prefixScore;
             }
 
             if (field.Text.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                return field.ContainsScore;
+                return containsScore;
             }
 
             return -1;
         }
 
-        private static int KindPriority(SearchField field)
+        /// <summary>
+        /// Title-first uses indexed scores. Tag-weighted remaps only Title/Name/Tag/AutoTag;
+        /// shared kinds keep their indexed scores (including Module info +2 penalty).
+        /// </summary>
+        private static void ResolveFieldScores(
+            SearchField field,
+            bool titleFirst,
+            out int prefixScore,
+            out int containsScore)
+        {
+            if (titleFirst)
+            {
+                prefixScore = field.PrefixScore;
+                containsScore = field.ContainsScore;
+                return;
+            }
+
+            switch (field.Kind)
+            {
+                case SearchFieldKind.Tag:
+                    prefixScore = TagWeightedTagPrefix;
+                    containsScore = TagWeightedTagContains;
+                    return;
+                case SearchFieldKind.AutoTag:
+                    prefixScore = TagWeightedAutoTagPrefix;
+                    containsScore = TagWeightedAutoTagContains;
+                    return;
+                case SearchFieldKind.Title:
+                    prefixScore = TagWeightedTitlePrefix;
+                    containsScore = TagWeightedTitleContains;
+                    return;
+                case SearchFieldKind.Name:
+                    prefixScore = TagWeightedNamePrefix;
+                    containsScore = TagWeightedNameContains;
+                    return;
+                default:
+                    prefixScore = field.PrefixScore;
+                    containsScore = field.ContainsScore;
+                    return;
+            }
+        }
+
+        private static int KindPriority(SearchField field, bool titleFirst)
         {
             if (field == null)
             {
                 return 99;
             }
 
+            if (titleFirst)
+            {
+                switch (field.Kind)
+                {
+                    case SearchFieldKind.Title:
+                    case SearchFieldKind.Name:
+                        return 0;
+                    case SearchFieldKind.Category:
+                    case SearchFieldKind.Module:
+                    case SearchFieldKind.ModName:
+                    case SearchFieldKind.ModFolder:
+                    case SearchFieldKind.Manufacturer:
+                    case SearchFieldKind.TechRequired:
+                        return 1;
+                    case SearchFieldKind.ModAuthor:
+                        return 2;
+                    case SearchFieldKind.Tag:
+                    case SearchFieldKind.AutoTag:
+                        return 3;
+                    case SearchFieldKind.Description:
+                        return 4;
+                    default:
+                        return 5;
+                }
+            }
+
+            // Tag-weighted / v0.7 tie-break: metadata and tags before title/name.
             switch (field.Kind)
             {
-                case SearchFieldKind.Title:
-                case SearchFieldKind.Name:
-                    return 0;
+                case SearchFieldKind.Tag:
+                case SearchFieldKind.AutoTag:
                 case SearchFieldKind.Category:
                 case SearchFieldKind.Module:
                 case SearchFieldKind.ModName:
                 case SearchFieldKind.ModFolder:
                 case SearchFieldKind.Manufacturer:
                 case SearchFieldKind.TechRequired:
-                    return 1;
+                    return 0;
                 case SearchFieldKind.ModAuthor:
+                    return 1;
+                case SearchFieldKind.Title:
+                case SearchFieldKind.Name:
                     return 2;
-                case SearchFieldKind.Tag:
-                case SearchFieldKind.AutoTag:
-                    return 3;
                 case SearchFieldKind.Description:
-                    return 4;
+                    return 3;
                 default:
-                    return 5;
+                    return 4;
             }
         }
 

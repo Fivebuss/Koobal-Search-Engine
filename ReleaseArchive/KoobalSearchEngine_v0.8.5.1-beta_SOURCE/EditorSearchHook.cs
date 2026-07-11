@@ -33,10 +33,9 @@ namespace PartSearchSuggest
     {
         private const int MaxSuggestions = 24;
         private const int MaxMetadataSuggestions = 8;
-        // Pull a wider categorizer pool, then budget high-value vs token-style rows.
+        // Pull a wider categorizer pool, then take top RankScore rows (already quality-filtered).
         private const int MaxCategorizerCandidates = 16;
-        private const int MaxHighValueCategorizerSuggestions = 8;
-        private const int MaxTokenCategorizerSuggestions = 3;
+        private const int MaxCategorizerSuggestions = 8;
 
         private TMP_InputField _searchField;
         private RectTransform _fieldRect;
@@ -726,8 +725,9 @@ namespace PartSearchSuggest
         }
 
         /// <summary>
-        /// Keep function/category/manufacturer/diameter rows freely; cap tag/module/resource/tech
-        /// token-style rows so they cannot fill the dropdown and push parts/filters off-screen.
+        /// Flat quality-sorted categorizer cap: candidates are already SuggestionTokenQuality-filtered
+        /// and RankScore-ordered by Match. Take the top rows so tags/modules/resources can appear
+        /// again without a harsh separate 3-row token bucket filling (or starving) the list.
         /// </summary>
         private static List<PartSuggestion> BudgetCategorizerSuggestions(List<PartSuggestion> candidates)
         {
@@ -736,48 +736,18 @@ namespace PartSearchSuggest
                 return new List<PartSuggestion>();
             }
 
-            var highValue = new List<PartSuggestion>(MaxHighValueCategorizerSuggestions);
-            var tokenStyle = new List<PartSuggestion>(MaxTokenCategorizerSuggestions);
-
-            for (int i = 0; i < candidates.Count; i++)
+            int take = Math.Min(MaxCategorizerSuggestions, candidates.Count);
+            var budgeted = new List<PartSuggestion>(take);
+            for (int i = 0; i < take; i++)
             {
                 PartSuggestion candidate = candidates[i];
-                if (candidate == null)
+                if (candidate != null)
                 {
-                    continue;
-                }
-
-                if (IsHighValueCategorizerKind(candidate.Kind))
-                {
-                    if (highValue.Count < MaxHighValueCategorizerSuggestions)
-                    {
-                        highValue.Add(candidate);
-                    }
-                }
-                else if (tokenStyle.Count < MaxTokenCategorizerSuggestions)
-                {
-                    tokenStyle.Add(candidate);
+                    budgeted.Add(candidate);
                 }
             }
 
-            var budgeted = new List<PartSuggestion>(highValue.Count + tokenStyle.Count);
-            budgeted.AddRange(highValue);
-            budgeted.AddRange(tokenStyle);
             return budgeted;
-        }
-
-        private static bool IsHighValueCategorizerKind(SuggestionKind kind)
-        {
-            switch (kind)
-            {
-                case SuggestionKind.FilterFunction:
-                case SuggestionKind.FilterCategory:
-                case SuggestionKind.FilterManufacturer:
-                case SuggestionKind.FilterDiameter:
-                    return true;
-                default:
-                    return false;
-            }
         }
 
         private static bool IsRedundantPartSuggestion(

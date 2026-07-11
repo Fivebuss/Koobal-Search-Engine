@@ -83,11 +83,13 @@ banner plus genuine warnings/errors are logged by default.
 - **Restore:** rich mix again — function/category/manufacturer/diameter, mod/author/suite,
   and part titles (e.g. Spark for `sp`) sit above parts in ranking; parts no longer crowd
   filters out of the top of the dropdown.
-- **Cap:** tag/module/resource/tech token-style rows limited (3) so generated suggestions
-  cannot fill the whole list; high-value categorizer filters keep a larger budget (8).
+- **Cap:** flat quality-sorted categorizer budget (top 8 by RankScore) so tag/module/resource/tech
+  rows can appear again without a harsh 3-row token bucket; denylist still blocks synonym junk.
 - **Suppress:** stock synonym-tag dictionary junk (`space`, `speed`, `spoil`, `split`, `spot`)
   via `SuggestionTokenQuality` denylist; FilterResource no longer tokenizes free-form
-  `resourceInfo` prose. Title/name still preferred within part scoring.
+  `resourceInfo` prose.
+- **Part scoring:** query length ≤ 2 → title/name-first (Spark for `sp`); length ≥ 3 →
+  tag-weighted / v0.7-style within the parts pool (TagPrefix better than TitlePrefix).
 
 ### v0.8.5.1-beta — SearchStart NRE fix + hangar-free index load
 - **Fix:** after applying a suggestion, typing in the search field no longer throws
