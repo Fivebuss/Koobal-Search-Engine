@@ -97,6 +97,9 @@ banner plus genuine warnings/errors are logged by default.
   slightly larger.
 - **Branding footer:** empty-query Koobal wordmark stays horizontally centered at the
   bottom (no left drift on rebuild / width change).
+- **History (additive):** clicking a suggestion now records its display text in search
+  history (same dedupe/move-to-top as typed). Typed Enter/submit history path unchanged.
+  History is saved before the stock apply call so an apply exception cannot drop it.
 
 ### v0.8.5.0-beta — optimization + sanitary beta pass
 - **Performance:** removed a redundant per-keystroke field re-scan in part matching;

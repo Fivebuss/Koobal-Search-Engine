@@ -473,6 +473,23 @@ namespace PartSearchSuggest
             EditorBootstrap.Log("CommitSearchHistory: remembered '" + trimmed + "'.");
         }
 
+        /// <summary>
+        /// Additive history for clicked suggestions (display text). Typed Enter/submit still uses
+        /// <see cref="CommitSearchHistory"/> unchanged. Dedupes / moves-to-top via Remember.
+        /// </summary>
+        private void RememberClickedSuggestion(string value)
+        {
+            string trimmed = (value ?? string.Empty).Trim();
+            if (trimmed.Length < 2)
+            {
+                return;
+            }
+
+            _history.Remember(trimmed);
+            _lastCommittedQuery = trimmed;
+            EditorBootstrap.Log("RememberClickedSuggestion: remembered '" + trimmed + "'.");
+        }
+
         private void ClearSearchHistory()
         {
             _history.Clear();
@@ -908,31 +925,28 @@ namespace PartSearchSuggest
                             return;
                         }
 
+                        // Before apply: click must still land in history if Apply throws.
+                        RememberClickedSuggestion(suggestion.QueryText);
                         EditorBootstrap.Log("ApplySuggestion (stock): '" + suggestion.QueryText + "'");
                         StockSearchHelper.ApplySearch(suggestion.QueryText);
-                        _history.Remember(suggestion.QueryText);
-                        _lastCommittedQuery = suggestion.QueryText;
                         break;
 
                     case SuggestionKind.ModAuthor:
+                        RememberClickedSuggestion(displayText);
                         EditorBootstrap.Log("ApplySuggestion (author): '" + displayText + "'");
                         StockSearchHelper.ApplyModAuthorFilter(suggestion.FilterKey ?? displayText, displayText);
-                        _history.Remember(displayText);
-                        _lastCommittedQuery = displayText;
                         break;
 
                     case SuggestionKind.ModName:
+                        RememberClickedSuggestion(displayText);
                         EditorBootstrap.Log("ApplySuggestion (mod): '" + displayText + "'");
                         StockSearchHelper.ApplyModNameFilter(suggestion.FilterKey ?? displayText, displayText);
-                        _history.Remember(displayText);
-                        _lastCommittedQuery = displayText;
                         break;
 
                     case SuggestionKind.ModSuite:
+                        RememberClickedSuggestion(displayText);
                         EditorBootstrap.Log("ApplySuggestion (suite): '" + displayText + "'");
                         StockSearchHelper.ApplyModSuiteFilter(suggestion.FilterKey ?? suggestion.QueryText ?? displayText, displayText);
-                        _history.Remember(displayText);
-                        _lastCommittedQuery = displayText;
                         break;
 
                     case SuggestionKind.FilterFunction:
@@ -943,10 +957,9 @@ namespace PartSearchSuggest
                     case SuggestionKind.FilterResource:
                     case SuggestionKind.FilterTech:
                     case SuggestionKind.FilterTag:
+                        RememberClickedSuggestion(displayText);
                         EditorBootstrap.Log("ApplySuggestion (categorizer): '" + displayText + "' kind=" + suggestion.Kind);
                         StockSearchHelper.ApplyCategorizerFilter(suggestion);
-                        _history.Remember(displayText);
-                        _lastCommittedQuery = displayText;
                         break;
 
                     case SuggestionKind.Part:
@@ -957,14 +970,13 @@ namespace PartSearchSuggest
                             return;
                         }
 
+                        RememberClickedSuggestion(displayText);
                         EditorBootstrap.Log(
                             "ApplySuggestion (precise): '"
                             + displayText
                             + "' id="
                             + suggestion.Part.name);
                         StockSearchHelper.ApplyPrecisePart(suggestion.Part, displayText);
-                        _history.Remember(displayText);
-                        _lastCommittedQuery = displayText;
                         break;
                 }
             }
