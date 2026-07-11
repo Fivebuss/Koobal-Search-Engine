@@ -7,8 +7,7 @@ namespace PartSearchSuggest
 {
     /// <summary>
     /// Builds and holds per-save search indexes during the post-save-selection loading screen.
-    /// Main menu performs no work. Only <see cref="GameLoadBootstrap"/> starts builds.
-    /// Editor entry consumes pre-built indexes (UI hook only — never starts index work).
+    /// Main menu performs no work; editor entry consumes pre-built indexes (UI hook only).
     /// </summary>
     internal static class GameLoadIndexService
     {
@@ -30,11 +29,6 @@ namespace PartSearchSuggest
 
         internal static bool IsFullReady => _fullReady;
 
-        /// <summary>
-        /// True for first post-save scene that still needs indexes. EDITOR is included only so
-        /// save-resume into VAB/SPH can finish indexing on that load screen — not for KSC→hangar
-        /// re-entry (IsReadyForSave short-circuits once built).
-        /// </summary>
         internal static bool ShouldBuildForCurrentScene()
         {
             if (HighLogic.CurrentGame == null)
@@ -80,13 +74,6 @@ namespace PartSearchSuggest
 
         internal static IEnumerator BuildIfNeeded(MonoBehaviour host)
         {
-            // Scene hosts are destroyed on transition; a mid-build lock can be left stale.
-            if (_buildInProgress && !_fullReady)
-            {
-                EditorBootstrap.Log("Clearing stale index-build lock from prior scene host.");
-                _buildInProgress = false;
-            }
-
             if (_buildInProgress)
             {
                 yield break;
@@ -99,64 +86,54 @@ namespace PartSearchSuggest
             }
 
             _buildInProgress = true;
-            try
-            {
-                _basicReady = false;
-                _fullReady = false;
-                _partIndex = null;
-                _metadataIndex = null;
-                _categorizerIndex = null;
+            _basicReady = false;
+            _fullReady = false;
+            _partIndex = null;
+            _metadataIndex = null;
+            _categorizerIndex = null;
 
-                EditorBootstrap.Log("Building search index during game load...");
+            EditorBootstrap.Log("Building search index during game load...");
 
-                yield return new WaitUntil(() => PartLoader.Instance != null && PartLoader.Instance.loadedParts != null);
+            yield return new WaitUntil(() => PartLoader.Instance != null && PartLoader.Instance.loadedParts != null);
 
-                ModMetadataCache.Build();
+            ModMetadataCache.Build();
 
-                EditorPartAvailability.Invalidate();
-                var availabilityStopwatch = Stopwatch.StartNew();
-                EditorPartAvailability.WarmCache();
-                availabilityStopwatch.Stop();
-                EditorBootstrap.Log(
-                    "Editor part availability cache warmed ("
-                    + EditorPartAvailability.CountLoadedEditorParts()
-                    + " parts) in "
-                    + availabilityStopwatch.ElapsedMilliseconds
-                    + "ms.");
+            EditorPartAvailability.Invalidate();
+            var availabilityStopwatch = Stopwatch.StartNew();
+            EditorPartAvailability.WarmCache();
+            availabilityStopwatch.Stop();
+            EditorBootstrap.Log(
+                "Editor part availability cache warmed ("
+                + EditorPartAvailability.CountLoadedEditorParts()
+                + " parts) in "
+                + availabilityStopwatch.ElapsedMilliseconds
+                + "ms.");
 
-                _partIndex = new SuggestionIndex();
-                var suggestionStopwatch = Stopwatch.StartNew();
-                yield return _partIndex.BuildCoroutine();
-                suggestionStopwatch.Stop();
-                EditorBootstrap.Log("SuggestionIndex complete in " + suggestionStopwatch.ElapsedMilliseconds + "ms.");
+            _partIndex = new SuggestionIndex();
+            var suggestionStopwatch = Stopwatch.StartNew();
+            yield return _partIndex.BuildCoroutine();
+            suggestionStopwatch.Stop();
+            EditorBootstrap.Log("SuggestionIndex complete in " + suggestionStopwatch.ElapsedMilliseconds + "ms.");
 
-                _basicReady = true;
-                _indexedSaveKey = saveKey;
-                EditorBootstrap.Log("Search ready (basic)");
+            _basicReady = true;
+            _indexedSaveKey = saveKey;
+            EditorBootstrap.Log("Search ready (basic)");
 
-                _metadataIndex = new MetadataSuggestionIndex();
-                _categorizerIndex = new CategorizerSuggestionIndex();
+            _metadataIndex = new MetadataSuggestionIndex();
+            _categorizerIndex = new CategorizerSuggestionIndex();
 
-                bool metadataDone = false;
-                bool categorizerDone = false;
-                host.StartCoroutine(BuildMetadataBackground(() => metadataDone = true));
-                host.StartCoroutine(BuildCategorizerBackground(() => categorizerDone = true));
-                yield return new WaitUntil(() => metadataDone && categorizerDone);
+            bool metadataDone = false;
+            bool categorizerDone = false;
+            host.StartCoroutine(BuildMetadataBackground(() => metadataDone = true));
+            host.StartCoroutine(BuildCategorizerBackground(() => categorizerDone = true));
+            yield return new WaitUntil(() => metadataDone && categorizerDone);
 
-                _fullReady = true;
-                IndexDebugDump.LogIfEnabled(_partIndex, _metadataIndex, _categorizerIndex);
-                EditorBootstrap.Log("Search ready (full)");
-            }
-            finally
-            {
-                _buildInProgress = false;
-            }
+            _fullReady = true;
+            IndexDebugDump.LogIfEnabled(_partIndex, _metadataIndex, _categorizerIndex);
+            EditorBootstrap.Log("Search ready (full)");
+            _buildInProgress = false;
         }
 
-        /// <summary>
-        /// Wait-only. Never starts index builds (hangar must stay free of load work).
-        /// <see cref="GameLoadBootstrap"/> is the sole build initiator.
-        /// </summary>
         internal static IEnumerator WaitUntilBasicReady(MonoBehaviour host)
         {
             if (_basicReady)
@@ -168,18 +145,26 @@ namespace PartSearchSuggest
             float elapsed = 0f;
             while (!_basicReady && elapsed < timeout)
             {
+                if (!_buildInProgress && ShouldBuildForCurrentScene())
+                {
+                    yield return host.StartCoroutine(BuildIfNeeded(host));
+                }
+
+                if (_basicReady)
+                {
+                    yield break;
+                }
+
                 elapsed += UnityEngine.Time.unscaledDeltaTime;
                 yield return null;
             }
 
             if (!_basicReady)
             {
-                EditorBootstrap.LogWarning(
-                    "Save-load basic index not ready after wait — dropdown disabled (no hangar rebuild).");
+                EditorBootstrap.LogWarning("Save-load basic index not ready — editor fallback build may be slow.");
             }
         }
 
-        /// <summary>Wait-only for full metadata/categorizer indexes. Does not start builds.</summary>
         internal static IEnumerator WaitUntilFullReady(MonoBehaviour host)
         {
             if (_fullReady)
@@ -200,32 +185,20 @@ namespace PartSearchSuggest
 
         private static IEnumerator BuildMetadataBackground(Action onComplete)
         {
-            try
-            {
-                var stopwatch = Stopwatch.StartNew();
-                yield return _metadataIndex.BuildCoroutine();
-                stopwatch.Stop();
-                EditorBootstrap.Log("MetadataSuggestionIndex complete in " + stopwatch.ElapsedMilliseconds + "ms.");
-            }
-            finally
-            {
-                onComplete?.Invoke();
-            }
+            var stopwatch = Stopwatch.StartNew();
+            yield return _metadataIndex.BuildCoroutine();
+            stopwatch.Stop();
+            EditorBootstrap.Log("MetadataSuggestionIndex complete in " + stopwatch.ElapsedMilliseconds + "ms.");
+            onComplete?.Invoke();
         }
 
         private static IEnumerator BuildCategorizerBackground(Action onComplete)
         {
-            try
-            {
-                var stopwatch = Stopwatch.StartNew();
-                yield return _categorizerIndex.BuildCoroutine();
-                stopwatch.Stop();
-                EditorBootstrap.Log("CategorizerSuggestionIndex complete in " + stopwatch.ElapsedMilliseconds + "ms.");
-            }
-            finally
-            {
-                onComplete?.Invoke();
-            }
+            var stopwatch = Stopwatch.StartNew();
+            yield return _categorizerIndex.BuildCoroutine();
+            stopwatch.Stop();
+            EditorBootstrap.Log("CategorizerSuggestionIndex complete in " + stopwatch.ElapsedMilliseconds + "ms.");
+            onComplete?.Invoke();
         }
 
         private static bool IsReadyForSave(string saveKey)

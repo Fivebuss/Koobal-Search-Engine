@@ -604,30 +604,6 @@ namespace PartSearchSuggest
                 return;
             }
 
-            // Release custom-filter race guard on focus/typing so stock SearchStart can
-            // create a real SearchRoutine (blur/refocus previously "fixed" this by accident).
-            if (!StockSearchGuard.IsSuppressed)
-            {
-                StockSearchGuard.ClearActiveCustomFilter();
-            }
-
-            CancelSearchRoutine(categorizer);
-            PartCategorizerSearchFields.ResetTypingSearchFlags(categorizer);
-        }
-
-        /// <summary>
-        /// After a failed apply, restore PartCategorizer search flags so subsequent typing
-        /// does not hit StartCoroutine(null) from a half-applied guard state.
-        /// </summary>
-        internal static void RecoverAfterFailedApply()
-        {
-            StockSearchGuard.ClearActiveCustomFilter();
-            PartCategorizer categorizer = PartCategorizer.Instance;
-            if (categorizer == null)
-            {
-                return;
-            }
-
             CancelSearchRoutine(categorizer);
             PartCategorizerSearchFields.ResetTypingSearchFlags(categorizer);
         }
@@ -890,7 +866,25 @@ namespace PartSearchSuggest
 
                 ModNameFilterId,
 
-                candidate => ModFilterMatcher.PartMatchesModFolder(candidate, capturedFolder),
+                candidate =>
+
+                {
+
+                    if (candidate == null)
+
+                    {
+
+                        return false;
+
+                    }
+
+
+
+                    string folder = ModMetadataCache.ExtractModFolderFromPart(candidate);
+
+                    return ModFilterMatcher.PartMatchesModFolder(candidate, capturedFolder);
+
+                },
 
                 string.Empty);
 
@@ -1333,6 +1327,16 @@ namespace PartSearchSuggest
 
 
             field.text = text ?? string.Empty;
+
+        }
+
+
+
+        private static bool PartMatchesAuthor(AvailablePart part, string author)
+
+        {
+
+            return AuthorAttribution.PartMatchesAuthorFilter(part, author);
 
         }
 

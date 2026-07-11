@@ -1,13 +1,11 @@
 {
     "NAME": "Koobal Search Engine",
-    "URL": "https://github.com/timbrwolf1121-cpu/Koobal-Search-Engine",
-    "DOWNLOAD": "https://github.com/timbrwolf1121-cpu/Koobal-Search-Engine",
-    "AUTHOR": "timbrwolf1121",
+    "AUTHOR": "Tim / Composer",
     "VERSION": {
         "MAJOR": 0,
         "MINOR": 8,
         "PATCH": 5,
-        "BUILD": 1
+        "BUILD": 0
     },
     "KSP_VERSION": {
         "MAJOR": 1,

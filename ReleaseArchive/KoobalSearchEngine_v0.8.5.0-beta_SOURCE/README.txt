@@ -1,4 +1,4 @@
-# Koobal Search Engine — v0.8.5.1-beta
+# Koobal Search Engine — v0.8.5.0-beta
 
 Predictive search for the KSP editor (VAB/SPH). Koobal attaches a Google-style
 dropdown of live suggestions to the **native** stock parts search bar — no separate
@@ -45,8 +45,7 @@ search path.
 1. Close KSP.
 2. Copy `GameData/KoobalSearchEngine/` into your KSP `GameData/` (merge/overwrite).
 3. Launch KSP → open the VAB or SPH.
-4. `KSP.log` should contain: `[Koobal] Koobal Search Engine v0.8.5.1 active.`
-   (assembly version `0.8.5.1`; this package is labeled **v0.8.5.1-beta**.)
+4. `KSP.log` should contain: `[Koobal] Koobal Search Engine v0.8.5.0 active.`
 
 ### Requirements / dependencies
 
@@ -78,34 +77,6 @@ Restart the editor. Beta ships with verbose logging **off** — only a concise s
 banner plus genuine warnings/errors are logged by default.
 
 ## Changelog (recent)
-
-### v0.8.5.1-beta — SearchStart NRE fix + hangar-free index load
-- **Fix:** after applying a suggestion, typing in the search field no longer throws
-  `NullReferenceException: routine is null` from stock `SearchStart`.
-- **Cause:** the race guard Harmony-skipped `SearchRoutine` (IEnumerator), which made
-  it return null; stock then called `StartCoroutine(null)`. Blur/refocus appeared to
-  "fix" it by resetting search state.
-- **Change:** stop skipping `SearchRoutine`; block void `SearchStart` only while a
-  Koobal apply is in progress; clear the custom-filter guard when stock search starts
-  or on focus/typing; recover search flags if ApplySuggestion fails.
-- **QoL (also under this label):** editor (VAB/SPH) no longer starts index builds.
-  `GameLoadBootstrap` is the sole builder (save-load / first post-save scene).
-  `EditorSearchHook` only waits for readiness and hooks the search UI. Removed hangar
-  fallback `BuildIfNeeded` and wait-path build kicks; clears stale build locks after
-  scene-host destruction. (Briefly labeled v0.8.5.2 during ModTest; folded back into
-  v0.8.5.1 / this beta package.)
-- **1080p readability:** larger dropdown fonts + brighter contrast; branding captions
-  slightly larger.
-- **Branding footer:** empty-query Koobal wordmark stays horizontally centered at the
-  bottom (no left drift on rebuild / width change).
-- **History (additive):** clicking a suggestion now records its display text in search
-  history (same dedupe/move-to-top as typed). Typed Enter/submit history path unchanged.
-  History is saved before the stock apply call so an apply exception cannot drop it.
-- **Clear-history icon:** header trash button uses a programmatic 16x16 trashcan sprite
-  (stock TMP font has no wastebasket glyph; no suitable Squad UI sprite found). Tooltip
-  remains "Clear history".
-- **Packaging:** dual-deploy beta (main + ModTest); forum zip includes GameData + Source
-  + LICENSE + FORUM_INSTALL; author `timbrwolf1121`; `.version` points at GitHub.
 
 ### v0.8.5.0-beta — optimization + sanitary beta pass
 - **Performance:** removed a redundant per-keystroke field re-scan in part matching;
